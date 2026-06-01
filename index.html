@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Planning 2026 - Accueil & Orientation</title>
+</head>
+<body>
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  
+  html, body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif;
+    background: 
+      radial-gradient(circle at 20% 0%, rgba(255, 200, 220, 0.4) 0%, transparent 50%),
+      radial-gradient(circle at 80% 30%, rgba(200, 220, 255, 0.4) 0%, transparent 50%),
+      radial-gradient(circle at 50% 80%, rgba(255, 230, 200, 0.4) 0%, transparent 50%),
+      linear-gradient(135deg, #FFF9F5 0%, #F5F8FF 100%);
+    background-attachment: fixed;
+    color: #1A1D29;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+  
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 28px 18px 60px; }
+  
+  /* ===== HERO ===== */
+  .hero { text-align: center; margin-bottom: 28px; position: relative; }
+  
+  .year-pill {
+    display: inline-block;
+    background: linear-gradient(135deg, #667EEA, #764BA2);
+    color: white;
+    padding: 6px 18px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2.5px;
+    margin-bottom: 14px;
+    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
+  }
+  
+  h1 {
+    font-size: clamp(32px, 6vw, 48px);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -1.5px;
+    background: linear-gradient(135deg, #1A1D29 0%, #6B5DAB 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    margin-bottom: 6px;
+  }
+  
+  .sub {
+    color: #6B7280;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  
+  .status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    padding: 5px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    transition: all 0.2s;
+  }
+  .status::before {
+    content: "";
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+  .status.ok     { background: #DCFCE7; color: #16A34A; }
+  .status.saving { background: #FEF9C3; color: #CA8A04; }
+  .status.error  { background: #FEE2E2; color: #DC2626; }
+  
+  .gear-btn {
+    position: absolute;
+    top: 8px;
+    right: 0;
+    width: 38px; height: 38px;
+    border-radius: 12px;
+    background: white;
+    border: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    cursor: pointer;
+    font-size: 18px;
+    transition: transform 0.15s;
+  }
+  .gear-btn:hover { transform: rotate(45deg); }
+  
+  /* ===== STATS ===== */
+  .stats-wrap {
+    position: relative;
+    margin: 0 -4px 24px;
+  }
+  .stats {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 14px 4px;
+    scrollbar-width: none;
+    scroll-behavior: smooth;
+  }
+  .stats::-webkit-scrollbar { display: none; }
+  
+  .stats-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    background: white;
+    border: 1px solid rgba(0,0,0,0.05);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+    cursor: pointer;
+    font-size: 20px;
+    line-height: 1;
+    color: #4B5563;
+    display: none;
+    align-items: center; justify-content: center;
+    z-index: 6;
+    padding-bottom: 2px;
+    transition: transform 0.12s, opacity 0.2s;
+  }
+  .stats-arrow:hover { transform: translateY(-50%) scale(1.1); }
+  .stats-arrow:active { transform: translateY(-50%) scale(0.92); }
+  .stats-arrow.left  { left: -2px; }
+  .stats-arrow.right { right: -2px; }
+  .stats-arrow.show  { display: flex; }
+  
+  /* petits fondus sur les bords pour signaler qu'il y a plus à voir */
+  .stats-wrap::before,
+  .stats-wrap::after {
+    content: "";
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 36px;
+    pointer-events: none;
+    z-index: 5;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .stats-wrap::before {
+    left: 0;
+    background: linear-gradient(90deg, rgba(250,249,245,0.95), transparent);
+  }
+  .stats-wrap::after {
+    right: 0;
+    background: linear-gradient(270deg, rgba(245,248,255,0.95), transparent);
+  }
+  .stats-wrap.fade-left::before  { opacity: 1; }
+  .stats-wrap.fade-right::after  { opacity: 1; }
+  
+  .stat-chip {
+    flex-shrink: 0;
+    background: white;
+    border-radius: 999px;
+    padding: 6px 14px 6px 6px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .stat-chip .avatar { width: 26px; height: 26px; font-size: 10px; }
+  .stat-chip .count {
+    background: #F3F4F6;
+    border-radius: 999px;
+    padding: 2px 8px;
+    font-size: 11px;
+    color: #6B7280;
+    margin-left: 4px;
+  }
+  
+  .avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center; justify-content: center;
+    font-weight: 800;
+    color: white;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  }
+  
+  /* ===== MONTH CARDS ===== */
+  .months { display: grid; gap: 18px; }
+  
+  .month-card {
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    border-radius: 24px;
+    padding: 22px;
+    box-shadow: 0 8px 32px rgba(31, 38, 135, 0.06);
+  }
+  
+  .month-head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+  
+  .month-badge {
+    width: 44px; height: 44px;
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800;
+    font-size: 14px;
+    background: var(--m-bg);
+    color: var(--m-fg);
+  }
+  
+  .month-name {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: #1A1D29;
+  }
+  
+  .month-meta {
+    margin-left: auto;
+    font-size: 11px;
+    color: #9CA3AF;
+    font-weight: 600;
+    background: rgba(0,0,0,0.04);
+    padding: 4px 10px;
+    border-radius: 999px;
+  }
+  
+  /* Weekend grid */
+  .weekend-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 10px;
+  }
+  
+  .day-card {
+    background: white;
+    border-radius: 16px;
+    padding: 12px;
+    border: 1.5px solid rgba(0,0,0,0.04);
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .day-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.06); }
+  .day-card.sun { background: linear-gradient(180deg, #FFF7F7 0%, #FFFFFF 60%); }
+  
+  .day-top {
+    display: flex; align-items: baseline; gap: 6px;
+    margin-bottom: 10px;
+  }
+  
+  .day-label {
+    font-size: 9.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: #6366F1;
+  }
+  .day-label.sun { color: #EF4444; }
+  
+  .day-num {
+    font-size: 22px;
+    font-weight: 800;
+    line-height: 1;
+    color: #1A1D29;
+    margin-left: auto;
+    letter-spacing: -1px;
+  }
+  .day-num.sun { color: #EF4444; }
+  
+  /* Name slots */
+  .slots { display: flex; flex-direction: column; gap: 5px; }
+  
+  .slot {
+    background: #F9FAFB;
+    border: 1.5px dashed #E5E7EB;
+    border-radius: 10px;
+    padding: 7px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    min-height: 30px;
+    display: flex; align-items: center; justify-content: center;
+    color: #D1D5DB;
+    letter-spacing: 0.3px;
+  }
+  .slot::before { content: "＋"; font-weight: 400; }
+  .slot:hover {
+    border-style: solid;
+    border-color: #9CA3AF;
+    background: white;
+    color: #6B7280;
+  }
+  .slot.filled {
+    border: none;
+    padding: 8px 8px;
+    color: var(--p-fg);
+    background: var(--p-bg);
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.04);
+  }
+  .slot.filled::before { content: ""; }
+  .slot.filled:hover {
+    transform: scale(1.03);
+  }
+  
+  /* ===== MODAL ===== */
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(20, 22, 40, 0.5);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: none;
+    align-items: flex-end;
+    justify-content: center;
+    z-index: 100;
+    animation: fadein 0.2s;
+  }
+  .overlay.show { display: flex; }
+  
+  @keyframes fadein { from {opacity: 0;} to {opacity: 1;} }
+  @keyframes slideup { from {transform: translateY(40px); opacity: 0;} to {transform: translateY(0); opacity: 1;} }
+  
+  .sheet {
+    background: white;
+    border-radius: 28px 28px 0 0;
+    width: 100%;
+    max-width: 520px;
+    padding: 22px 22px 32px;
+    box-shadow: 0 -20px 60px rgba(0,0,0,0.2);
+    animation: slideup 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+  
+  @media (min-width: 600px) {
+    .overlay { align-items: center; }
+    .sheet { border-radius: 28px; max-height: 80vh; }
+  }
+  
+  .handle {
+    width: 40px; height: 4px;
+    background: #E5E7EB;
+    border-radius: 999px;
+    margin: 0 auto 16px;
+  }
+  
+  .sheet-title {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: #9CA3AF;
+    margin-bottom: 4px;
+  }
+  
+  .sheet-date {
+    font-size: 24px;
+    font-weight: 800;
+    margin-bottom: 6px;
+    letter-spacing: -0.5px;
+  }
+  
+  .sheet-help {
+    font-size: 13px;
+    color: #6B7280;
+    margin-bottom: 18px;
+  }
+  
+  .team-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  
+  .team-btn {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    border: 1.5px solid transparent;
+    background: var(--p-bg);
+    color: var(--p-fg);
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: left;
+  }
+  .team-btn:hover { transform: scale(1.03); }
+  .team-btn:active { transform: scale(0.97); }
+  .team-btn.assigned { 
+    background: #F3F4F6; 
+    color: #9CA3AF;
+    border: 1.5px dashed #D1D5DB;
+  }
+  .team-btn.assigned .avatar { opacity: 0.4; }
+  
+  .team-btn .avatar { width: 28px; height: 28px; font-size: 10px; }
+  
+  .actions {
+    display: flex; gap: 8px;
+    margin-top: 12px;
+    padding-top: 14px;
+    border-top: 1px solid #F3F4F6;
+  }
+  
+  .btn {
+    flex: 1;
+    padding: 12px;
+    border-radius: 14px;
+    border: none;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-secondary {
+    background: #F3F4F6;
+    color: #6B7280;
+  }
+  .btn-secondary:hover { background: #E5E7EB; }
+  .btn-danger {
+    background: #FEE2E2;
+    color: #DC2626;
+  }
+  .btn-danger:hover { background: #FECACA; }
+  
+  .add-person {
+    margin-top: 10px;
+    display: flex;
+    gap: 8px;
+  }
+  .add-person input {
+    flex: 1;
+    padding: 10px 14px;
+    border-radius: 12px;
+    border: 1.5px solid #E5E7EB;
+    font-size: 13px;
+    font-family: inherit;
+    font-weight: 600;
+    outline: none;
+  }
+  .add-person input:focus { border-color: #6366F1; }
+  .add-person button {
+    padding: 10px 16px;
+    border-radius: 12px;
+    border: none;
+    background: #1A1D29;
+    color: white;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: #1A1D29;
+    color: white;
+    padding: 10px 18px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 200;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  
+  /* Empty state in stats */
+  .stats-empty {
+    color: #9CA3AF;
+    font-size: 13px;
+    padding: 6px 0;
+  }
+</style>
+
+<div class="wrap">
+  <div class="hero">
+    <button class="gear-btn" id="gearBtn" title="Options">⚙</button>
+    <div class="year-pill">PLANNING 2026</div>
+    <h1>Accueil &amp; Orientation</h1>
+    <div class="status ok" id="status">Chargement…</div>
+  </div>
+  
+  <div class="stats-wrap" id="statsWrap">
+    <button class="stats-arrow left" id="statsLeft" aria-label="Voir les prénoms précédents">‹</button>
+    <div class="stats" id="stats"></div>
+    <button class="stats-arrow right" id="statsRight" aria-label="Voir les autres prénoms">›</button>
+  </div>
+  
+  <div class="months" id="months"></div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="sheet" id="sheet"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ============ DONNÉES ============
+  const YEAR = 2026;
+  
+  const INITIAL_TEAM = [
+    { name: "MARIE JOSE",    bg: "#FAD7C0", fg: "#8A4B25", av: "#E89968" },
+    { name: "MIGUELLE",      bg: "#FFF4C2", fg: "#8A6B0A", av: "#E0B82E" },
+    { name: "ISMAEL",        bg: "#CDEACD", fg: "#2E6B30", av: "#65A766" },
+    { name: "MAGDA",         bg: "#E1D5F0", fg: "#5B2C6F", av: "#9579B3" },
+    { name: "MARIE LINE",    bg: "#FBC7CC", fg: "#9C2A39", av: "#D86B7A" },
+    { name: "EVELYNE",       bg: "#FFE0B8", fg: "#9A5A1A", av: "#E0954A" },
+    { name: "ERIC",          bg: "#C5E1F5", fg: "#1F5582", av: "#5B9BD0" },
+    { name: "MELANIE",       bg: "#D4EBC8", fg: "#3A6B20", av: "#7BB05C" },
+    { name: "FERLITIA",      bg: "#E8D5EC", fg: "#6B2A75", av: "#B07AB8" },
+    { name: "SAINTE URSULE", bg: "#F4BBA0", fg: "#8B3A12", av: "#D77A4E" },
+  ];
+  
+  const MONTH_COLORS = {
+    0:  ["#E0EAFC", "#3A5FCD"], 1:  ["#FAD9E0", "#C2185B"],
+    2:  ["#D7EDD0", "#2E7D32"], 3:  ["#E8D9F3", "#6A1B9A"],
+    4:  ["#FCE0CB", "#BF5A20"], 5:  ["#FFD6CC", "#D84315"],
+    6:  ["#FFF1B8", "#B8860B"], 7:  ["#F0E1C7", "#8B5A2B"],
+    8:  ["#FFD9B8", "#C2691E"], 9:  ["#E8C8A6", "#8B4513"],
+    10: ["#E1CDED", "#5B2C6F"], 11: ["#CCE5D2", "#1B5E20"],
+  };
+  
+  const MOIS = ["Janvier","Février","Mars","Avril","Mai","Juin",
+                "Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
+  
+  const INITIAL_DATA = {
+    "2026-05-02": ["MARIE JOSE"],
+    "2026-05-03": ["MIGUELLE", "ISMAEL"],
+    "2026-05-09": ["MAGDA"],
+    "2026-05-10": ["MARIE LINE", "EVELYNE"],
+    "2026-05-16": ["ERIC"],
+    "2026-05-17": ["MELANIE", "FERLITIA"],
+    "2026-05-23": ["MAGDA"],
+    "2026-05-24": ["SAINTE URSULE", "MARIE LINE"],
+  };
+  
+  const STORAGE_KEY = "planning2026";
+  let state = { plan: {}, team: INITIAL_TEAM };
+  let pickerCtx = null; // {dateKey, slotIdx}
+  
+  // ============ PERSISTENCE (PARTAGÉE) ============
+  // shared = true : tout le monde qui ouvre le lien partage le MÊME planning
+  const SHARED = true;
+  
+  // Implémentation localStorage (données partagées dans le navigateur)
+  // Pour un stockage véritablement partagé entre utilisateurs, voir la config Supabase ci-dessous
+  const HAS_STORAGE = typeof window !== "undefined" && typeof localStorage !== "undefined";
+  
+  // ============ SUPABASE CONFIG (Optionnel - pour partage réel) ============
+  // Décommentez et configurez si vous voulez un stockage réel dans le cloud
+  /*
+  const SUPABASE_URL = "YOUR_SUPABASE_URL";
+  const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+  
+  async function initSupabase() {
+    const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2');
+    window.supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  }
+  */
+  
+  function setStatus(kind, text) {
+    const el = document.getElementById("status");
+    if (!el) return;
+    el.className = "status " + kind;
+    el.textContent = text;
+  }
+  
+  async function readState() {
+    if (!HAS_STORAGE) throw new Error("no-storage");
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) throw new Error("empty");
+    const parsed = JSON.parse(stored);
+    if (parsed.plan) state.plan = parsed.plan;
+    if (parsed.team) state.team = parsed.team;
+  }
+  
+  // Premier chargement : seed uniquement si aucune donnée n'existe encore
+  async function firstLoad() {
+    if (!HAS_STORAGE) {
+      state.plan = JSON.parse(JSON.stringify(INITIAL_DATA));
+      state.team = JSON.parse(JSON.stringify(INITIAL_TEAM));
+      setStatus("error", "⚠ Sauvegarde indisponible ici");
+      return;
+    }
+    try {
+      await readState();
+      setStatus("ok", "Synchronisé");
+    } catch (e) {
+      // pas encore de données → on initialise
+      state.plan = JSON.parse(JSON.stringify(INITIAL_DATA));
+      state.team = JSON.parse(JSON.stringify(INITIAL_TEAM));
+      const ok = await save();
+      setStatus(ok ? "ok" : "error", ok ? "Synchronisé" : "⚠ Sauvegarde impossible");
+    }
+  }
+  
+  // Rafraîchissement
+  async function refresh() {
+    if (!HAS_STORAGE) return;
+    try { await readState(); render(); setStatus("ok", "Synchronisé"); } catch (e) {}
+  }
+  
+  async function save() {
+    if (!HAS_STORAGE) {
+      setStatus("error", "⚠ Sauvegarde indisponible ici");
+      return false;
+    }
+    setStatus("saving", "Enregistrement…");
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      setStatus("ok", "Enregistré ✓");
+      return true;
+    } catch (e) {
+      console.error("save fail", e);
+      setStatus("error", "⚠ Échec de l'enregistrement");
+      toast("⚠ L'enregistrement a échoué");
+      return false;
+    }
+  }
+  
+  function getPerson(name) {
+    return state.team.find(p => p.name === name);
+  }
+  
+  function initials(name) {
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].slice(0, 2);
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  
+  // ============ WEEKENDS ============
+  function getMonths() {
+    const months = {};
+    let d = new Date(YEAR, 0, 1);
+    while (d.getFullYear() === YEAR) {
+      const dow = d.getDay();
+      if (dow === 0 || dow === 6) {
+        const m = d.getMonth();
+        if (!months[m]) months[m] = [];
+        months[m].push(new Date(d));
+      }
+      d.setDate(d.getDate() + 1);
+    }
+    return months;
+  }
+  
+  function dKey(d) {
+    return YEAR + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+  
+  // ============ RENDER ============
+  function render() {
+    renderStats();
+    renderMonths();
+  }
+  
+  function renderStats() {
+    const el = document.getElementById("stats");
+    const counts = {};
+    Object.values(state.plan).forEach(arr => {
+      (arr || []).forEach(n => { if (n) counts[n] = (counts[n] || 0) + 1; });
+    });
+    
+    const sorted = state.team
+      .map(p => ({ ...p, count: counts[p.name] || 0 }))
+      .sort((a, b) => b.count - a.count);
+    
+    if (sorted.every(p => p.count === 0)) {
+      el.innerHTML = '<div class="stats-empty">Aucune permanence assignée pour l\'instant</div>';
+      return;
+    }
+    
+    el.innerHTML = sorted.map(p => `
+      <div class="stat-chip">
+        <span class="avatar" style="background:${p.av}">${initials(p.name)}</span>
+        <span>${p.name}</span>
+        <span class="count">${p.count}</span>
+      </div>
+    `).join("");
+    
+    // mettre à jour les flèches après que le contenu soit en place
+    requestAnimationFrame(updateStatsArrows);
+  }
+  
+  function updateStatsArrows() {
+    const el = document.getElementById("stats");
+    const wrap = document.getElementById("statsWrap");
+    const left = document.getElementById("statsLeft");
+    const right = document.getElementById("statsRight");
+    if (!el || !wrap) return;
+    
+    const maxScroll = el.scrollWidth - el.clientWidth;
+    const canScroll = maxScroll > 4;
+    const x = el.scrollLeft;
+    
+    // Flèche gauche : visible si on a défilé vers la droite
+    if (canScroll && x > 4) { left.classList.add("show"); wrap.classList.add("fade-left"); }
+    else { left.classList.remove("show"); wrap.classList.remove("fade-left"); }
+    
+    // Flèche droite : visible s'il reste du contenu à droite
+    if (canScroll && x < maxScroll - 4) { right.classList.add("show"); wrap.classList.add("fade-right"); }
+    else { right.classList.remove("show"); wrap.classList.remove("fade-right"); }
+  }
+  
+  function renderMonths() {
+    const el = document.getElementById("months");
+    const months = getMonths();
+    const html = [];
+    
+    for (let m = 0; m < 12; m++) {
+      const dates = months[m] || [];
+      if (!dates.length) continue;
+      const [bg, fg] = MONTH_COLORS[m];
+      
+      const assignedCount = dates.reduce((acc, dt) => {
+        const arr = state.plan[dKey(dt)] || [];
+        return acc + arr.filter(Boolean).length;
+      }, 0);
+      
+      const daysHtml = dates.map(dt => {
+        const isSun = dt.getDay() === 0;
+        const key = dKey(dt);
+        const arr = state.plan[key] || [];
+        // afficher 3 emplacements (au moins 1 visible vide)
+        const slotCount = Math.max(arr.filter(Boolean).length + 1, 1);
+        const max = Math.min(slotCount, 3);
+        const slots = [];
+        for (let i = 0; i < max; i++) {
+          const nm = arr[i] || "";
+          if (nm) {
+            const p = getPerson(nm);
+            const c = p || { bg: "#F3F4F6", fg: "#6B7280" };
+            slots.push(`<div class="slot filled" style="--p-bg:${c.bg};--p-fg:${c.fg}" onclick="pick('${key}',${i})">${nm}</div>`);
+          } else {
+            slots.push(`<div class="slot" onclick="pick('${key}',${i})">＋</div>`);
+          }
+        }
+        return `
+          <div class="day-card ${isSun ? 'sun' : ''}">
+            <div class="day-top">
+              <span class="day-label ${isSun ? 'sun' : ''}">${isSun ? 'dim' : 'sam'}</span>
+              <span class="day-num ${isSun ? 'sun' : ''}">${dt.getDate()}</span>
+            </div>
+            <div class="slots">${slots.join("")}</div>
+          </div>
+        `;
+      }).join("");
+      
+      html.push(`
+        <div class="month-card">
+          <div class="month-head">
+            <div class="month-badge" style="--m-bg:${bg};--m-fg:${fg}">${String(m+1).padStart(2,'0')}</div>
+            <div class="month-name">${MOIS[m]}</div>
+            <div class="month-meta">${assignedCount} ${assignedCount > 1 ? 'permanences' : 'permanence'}</div>
+          </div>
+          <div class="weekend-grid">${daysHtml}</div>
+        </div>
+      `);
+    }
+    el.innerHTML = html.join("");
+  }
+  
+  // ============ INTERACTIONS ============
+  function pick(dateKey, slotIdx) {
+    pickerCtx = { dateKey, slotIdx };
+    const [y, mo, da] = dateKey.split("-").map(Number);
+    const dt = new Date(y, mo - 1, da);
+    const isSun = dt.getDay() === 0;
+    const dayLabel = isSun ? "Dimanche" : "Samedi";
+    const monthName = MOIS[mo - 1];
+    
+    const arr = state.plan[dateKey] || [];
+    const currentName = arr[slotIdx] || "";
+    
+    // Liste des prénoms déjà assignés sur cette date (pour griser)
+    const alreadyOnThisDate = new Set(arr.filter(Boolean));
+    
+    const teamHtml = state.team.map(p => {
+      const isCurrent = p.name === currentName;
+      const isUsed = alreadyOnThisDate.has(p.name) && !isCurrent;
+      const cls = isUsed ? "team-btn assigned" : "team-btn";
+      const style = isUsed ? "" : `style="--p-bg:${p.bg};--p-fg:${p.fg}"`;
+      return `
+        <button class="${cls}" ${style} onclick="assign('${p.name.replace(/'/g, "\\'")}')">
+          <span class="avatar" style="background:${p.av}">${initials(p.name)}</span>
+          <span>${p.name}</span>
+        </button>
+      `;
+    }).join("");
+    
+    const removeBtn = currentName ? 
+      `<button class="btn btn-danger" onclick="removeAssign()">Retirer ${currentName}</button>` : "";
+    
+    document.getElementById("sheet").innerHTML = `
+      <div class="handle"></div>
+      <div class="sheet-title">${dayLabel}</div>
+      <div class="sheet-date">${da} ${monthName.toLowerCase()}</div>
+      <div class="sheet-help">${currentName ? "Choisis une autre personne ou retire-la." : "Qui est à l'accueil ce jour-là ?"}</div>
+      <div class="team-grid">${teamHtml}</div>
+      <div class="add-person">
+        <input type="text" id="newPerson" placeholder="Ajouter un prénom..." />
+        <button onclick="addPerson()">Ajouter</button>
+      </div>
+      <div class="actions">
+        ${removeBtn}
+        <button class="btn btn-secondary" onclick="closeSheet()">Annuler</button>
+      </div>
+    `;
+    document.getElementById("overlay").classList.add("show");
+  }
+  
+  function closeSheet() {
+    document.getElementById("overlay").classList.remove("show");
+    pickerCtx = null;
+  }
+  
+  async function assign(name) {
+    if (!pickerCtx) return;
+    const { dateKey, slotIdx } = pickerCtx;
+    if (!state.plan[dateKey]) state.plan[dateKey] = [];
+    // Empêcher doublon : si la personne est déjà ailleurs sur cette date, ignorer
+    if ((state.plan[dateKey] || []).includes(name) && state.plan[dateKey][slotIdx] !== name) {
+      toast(`${name} est déjà sur cette journée`);
+      return;
+    }
+    state.plan[dateKey][slotIdx] = name;
+    // nettoyer entrées vides en queue
+    while (state.plan[dateKey].length && !state.plan[dateKey][state.plan[dateKey].length - 1]) {
+      state.plan[dateKey].pop();
+    }
+    await save();
+    render();
+    closeSheet();
+    toast(`✓ ${name} assigné${name.endsWith('E') || name.endsWith('A') ? 'e' : ''}`);
+  }
+  
+  async function removeAssign() {
+    if (!pickerCtx) return;
+    const { dateKey, slotIdx } = pickerCtx;
+    if (state.plan[dateKey]) {
+      state.plan[dateKey].splice(slotIdx, 1);
+      if (!state.plan[dateKey].length) delete state.plan[dateKey];
+    }
+    await save();
+    render();
+    closeSheet();
+    toast("Retiré");
+  }
+  
+  async function addPerson() {
+    const input = document.getElementById("newPerson");
+    const name = input.value.trim().toUpperCase();
+    if (!name) return;
+    if (state.team.some(p => p.name === name)) {
+      toast("Déjà dans l'équipe");
+      return;
+    }
+    // Génère couleurs pastel aléatoires depuis une palette douce
+    const palettes = [
+      ["#FCE4EC", "#AD1457", "#EC6F9C"],
+      ["#E1F5FE", "#01579B", "#4FC3F7"],
+      ["#F1F8E9", "#33691E", "#9CCC65"],
+      ["#FFF3E0", "#E65100", "#FFB74D"],
+      ["#F3E5F5", "#4A148C", "#BA68C8"],
+      ["#E0F2F1", "#004D40", "#4DB6AC"],
+      ["#FFEBEE", "#B71C1C", "#EF5350"],
+      ["#FFFDE7", "#F57F17", "#FFEE58"],
+    ];
+    const p = palettes[Math.floor(Math.random() * palettes.length)];
+    state.team.push({ name, bg: p[0], fg: p[1], av: p[2] });
+    await save();
+    input.value = "";
+    // refresh modal
+    if (pickerCtx) pick(pickerCtx.dateKey, pickerCtx.slotIdx);
+    render();
+    toast(`${name} ajouté à l'équipe`);
+  }
+  
+  function toast(msg) {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(t._tm);
+    t._tm = setTimeout(() => t.classList.remove("show"), 2000);
+  }
+  
+  // ============ GEAR / RESET ============
+  document.getElementById("gearBtn").addEventListener("click", () => {
+    pickerCtx = null;
+    document.getElementById("sheet").innerHTML = `
+      <div class="handle"></div>
+      <div class="sheet-title">Options</div>
+      <div class="sheet-date">Gestion</div>
+      <div class="sheet-help">Tout effacer remet le planning à zéro (mai d'origine).</div>
+      <div class="actions" style="border-top:none;padding-top:0">
+        <button class="btn btn-danger" onclick="resetAll()">Tout effacer</button>
+        <button class="btn btn-secondary" onclick="closeSheet()">Fermer</button>
+      </div>
+    `;
+    document.getElementById("overlay").classList.add("show");
+  });
+  
+  async function resetAll() {
+    if (!confirm("Effacer toutes les assignations ?")) return;
+    state.plan = JSON.parse(JSON.stringify(INITIAL_DATA));
+    state.team = JSON.parse(JSON.stringify(INITIAL_TEAM));
+    await save();
+    render();
+    closeSheet();
+    toast("Planning réinitialisé");
+  }
+  
+  // Tap outside to close
+  document.getElementById("overlay").addEventListener("click", (e) => {
+    if (e.target.id === "overlay") closeSheet();
+  });
+  
+  // Exposer pour onclick inline
+  window.pick = pick;
+  window.assign = assign;
+  window.removeAssign = removeAssign;
+  window.addPerson = addPerson;
+  window.closeSheet = closeSheet;
+  window.resetAll = resetAll;
+  
+  // GO
+  function modalOpen() {
+    return document.getElementById("overlay").classList.contains("show");
+  }
+  
+  (async () => {
+    await firstLoad();
+    render();
+    
+    // Flèches de défilement des prénoms en haut
+    const statsEl = document.getElementById("stats");
+    const step = () => Math.max(statsEl.clientWidth * 0.7, 160);
+    document.getElementById("statsLeft").addEventListener("click", () => {
+      statsEl.scrollBy({ left: -step(), behavior: "smooth" });
+    });
+    document.getElementById("statsRight").addEventListener("click", () => {
+      statsEl.scrollBy({ left: step(), behavior: "smooth" });
+    });
+    statsEl.addEventListener("scroll", updateStatsArrows);
+    window.addEventListener("resize", updateStatsArrows);
+    
+    // Synchro entre membres : recharge régulièrement et au retour sur l'onglet
+    // (sauf si une fenêtre de sélection est ouverte, pour ne pas gêner)
+    setInterval(() => { if (!modalOpen()) refresh(); }, 12000);
+    window.addEventListener("focus", () => { if (!modalOpen()) refresh(); });
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden && !modalOpen()) refresh();
+    });
+  })();
+</script>
+
+</body>
+</html>
