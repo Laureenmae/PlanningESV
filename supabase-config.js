@@ -13,7 +13,7 @@
 // <script src="supabase-config.js"></script>
 
 const SUPABASE_CONFIG = {
-  url: "https://dxsozkvftpirlttzuujm.supabase.co",
+  url: "https://dxsozkvftpilrttzuujm.supabase.co",
   anonKey: "sb_publishable_8_O3m5Ltu6lIhxhSjJmAqA_PQW4bptX"
 };
 
