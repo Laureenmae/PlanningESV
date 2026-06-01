@@ -23,7 +23,7 @@ let supabaseClient = null;
 async function initSupabase() {
   if (supabaseClient) return supabaseClient;
   
-  const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2');
+  const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
   supabaseClient = createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
   
   return supabaseClient;
