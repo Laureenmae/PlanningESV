@@ -1,12 +1,3 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Planning 2026 - Accueil & Orientation</title>
-</head>
-<body>
-
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   
@@ -192,8 +183,80 @@
     text-shadow: 0 1px 2px rgba(0,0,0,0.1);
   }
   
+  /* ===== MONTH TABS ===== */
+  .month-tabs-wrap {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    margin: 0 -18px 18px;
+    padding: 8px 0;
+    background: rgba(250, 249, 247, 0.82);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+  .month-tabs {
+    display: flex;
+    gap: 7px;
+    overflow-x: auto;
+    padding: 2px 18px;
+    scrollbar-width: none;
+    scroll-behavior: smooth;
+  }
+  .month-tabs::-webkit-scrollbar { display: none; }
+  
+  .mtab {
+    flex-shrink: 0;
+    border: none;
+    background: white;
+    color: #6B7280;
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 9px 15px;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    white-space: nowrap;
+  }
+  .mtab:hover { transform: translateY(-1px); }
+  .mtab:active { transform: scale(0.96); }
+  .mtab .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--m-fg);
+  }
+  .mtab .tab-count {
+    background: rgba(0,0,0,0.06);
+    color: #6B7280;
+    font-size: 11px;
+    border-radius: 999px;
+    padding: 1px 7px;
+    min-width: 18px;
+    text-align: center;
+  }
+  .mtab.active {
+    background: var(--m-fg);
+    color: white;
+    box-shadow: 0 6px 16px var(--m-shadow);
+  }
+  .mtab.active .dot { background: rgba(255,255,255,0.9); }
+  .mtab.active .tab-count {
+    background: rgba(255,255,255,0.25);
+    color: white;
+  }
+  
   /* ===== MONTH CARDS ===== */
   .months { display: grid; gap: 18px; }
+  
+  @keyframes cardIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .month-card { animation: cardIn 0.25s ease; }
   
   .month-card {
     background: rgba(255, 255, 255, 0.75);
@@ -505,6 +568,10 @@
     <button class="stats-arrow right" id="statsRight" aria-label="Voir les autres prénoms">›</button>
   </div>
   
+  <div class="month-tabs-wrap">
+    <div class="month-tabs" id="monthTabs"></div>
+  </div>
+  
   <div class="months" id="months"></div>
 </div>
 
@@ -557,26 +624,17 @@
   const STORAGE_KEY = "planning2026";
   let state = { plan: {}, team: INITIAL_TEAM };
   let pickerCtx = null; // {dateKey, slotIdx}
+  let currentMonth = new Date().getMonth(); // mois affiché (0-11)
   
   // ============ PERSISTENCE (PARTAGÉE) ============
   // shared = true : tout le monde qui ouvre le lien partage le MÊME planning
   const SHARED = true;
   
-  // Implémentation localStorage (données partagées dans le navigateur)
-  // Pour un stockage véritablement partagé entre utilisateurs, voir la config Supabase ci-dessous
-  const HAS_STORAGE = typeof window !== "undefined" && typeof localStorage !== "undefined";
-  
-  // ============ SUPABASE CONFIG (Optionnel - pour partage réel) ============
-  // Décommentez et configurez si vous voulez un stockage réel dans le cloud
-  /*
-  const SUPABASE_URL = "YOUR_SUPABASE_URL";
-  const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
-  
-  async function initSupabase() {
-    const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2');
-    window.supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  }
-  */
+  // Le stockage existe-t-il dans cet environnement ?
+  const HAS_STORAGE = typeof window !== "undefined"
+    && window.storage
+    && typeof window.storage.get === "function"
+    && typeof window.storage.set === "function";
   
   function setStatus(kind, text) {
     const el = document.getElementById("status");
@@ -587,9 +645,9 @@
   
   async function readState() {
     if (!HAS_STORAGE) throw new Error("no-storage");
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) throw new Error("empty");
-    const parsed = JSON.parse(stored);
+    const r = await window.storage.get(STORAGE_KEY, SHARED); // throw si inexistant
+    if (!r || r.value == null) throw new Error("empty");
+    const parsed = JSON.parse(r.value);
     if (parsed.plan) state.plan = parsed.plan;
     if (parsed.team) state.team = parsed.team;
   }
@@ -614,7 +672,7 @@
     }
   }
   
-  // Rafraîchissement
+  // Rafraîchissement (ne sème jamais de données par défaut → pas de risque d'écraser)
   async function refresh() {
     if (!HAS_STORAGE) return;
     try { await readState(); render(); setStatus("ok", "Synchronisé"); } catch (e) {}
@@ -626,16 +684,19 @@
       return false;
     }
     setStatus("saving", "Enregistrement…");
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      setStatus("ok", "Enregistré ✓");
-      return true;
-    } catch (e) {
-      console.error("save fail", e);
-      setStatus("error", "⚠ Échec de l'enregistrement");
-      toast("⚠ L'enregistrement a échoué");
-      return false;
+    // 2 tentatives en cas d'échec réseau ponctuel
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const res = await window.storage.set(STORAGE_KEY, JSON.stringify(state), SHARED);
+        if (res) { setStatus("ok", "Enregistré ✓"); return true; }
+      } catch (e) {
+        console.error("save fail", e);
+      }
+      await new Promise(r => setTimeout(r, 400));
     }
+    setStatus("error", "⚠ Échec de l'enregistrement");
+    toast("⚠ L'enregistrement a échoué");
+    return false;
   }
   
   function getPerson(name) {
@@ -671,8 +732,48 @@
   // ============ RENDER ============
   function render() {
     renderStats();
+    renderTabs();
     renderMonths();
   }
+  
+  function renderTabs() {
+    const months = getMonths();
+    const valid = [];
+    for (let m = 0; m < 12; m++) {
+      if ((months[m] || []).length) valid.push(m);
+    }
+    // si le mois courant n'a pas de week-ends (impossible ici) ou n'est pas valide, prendre le 1er
+    if (!valid.includes(currentMonth)) currentMonth = valid[0];
+    
+    const el = document.getElementById("monthTabs");
+    el.innerHTML = valid.map(m => {
+      const dates = months[m];
+      const count = dates.reduce((acc, dt) => {
+        const arr = state.plan[dKey(dt)] || [];
+        return acc + arr.filter(Boolean).length;
+      }, 0);
+      const [bg, fg] = MONTH_COLORS[m];
+      const active = m === currentMonth ? "active" : "";
+      const countBadge = count > 0 ? `<span class="tab-count">${count}</span>` : "";
+      const short = MOIS[m].length > 5 ? MOIS[m].slice(0, 4) + "." : MOIS[m];
+      return `<button class="mtab ${active}" style="--m-fg:${fg};--m-bg:${bg};--m-shadow:${fg}44" onclick="selectMonth(${m})">
+                <span class="dot"></span>${short}${countBadge}
+              </button>`;
+    }).join("");
+    
+    // amener l'onglet actif à l'écran
+    requestAnimationFrame(() => {
+      const activeBtn = el.querySelector(".mtab.active");
+      if (activeBtn) activeBtn.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+    });
+  }
+  
+  function selectMonth(m) {
+    currentMonth = m;
+    renderTabs();
+    renderMonths();
+  }
+  window.selectMonth = selectMonth;
   
   function renderStats() {
     const el = document.getElementById("stats");
@@ -728,6 +829,7 @@
     const html = [];
     
     for (let m = 0; m < 12; m++) {
+      if (m !== currentMonth) continue;
       const dates = months[m] || [];
       if (!dates.length) continue;
       const [bg, fg] = MONTH_COLORS[m];
@@ -973,6 +1075,3 @@
     });
   })();
 </script>
-
-</body>
-</html>
