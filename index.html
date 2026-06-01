@@ -1,3 +1,4 @@
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   
@@ -588,6 +589,16 @@
 <div class="toast" id="toast"></div>
 
 <script>
+  // ============ VIEWPORT MOBILE (crucial : sans ça, tout est dézoomé sur téléphone) ============
+  (function ensureViewport() {
+    if (!document.querySelector('meta[name="viewport"]')) {
+      const meta = document.createElement('meta');
+      meta.name = 'viewport';
+      meta.content = 'width=device-width, initial-scale=1, viewport-fit=cover';
+      document.head.appendChild(meta);
+    }
+  })();
+  
   // ============ DONNÉES ============
   const YEAR = 2026;
   
