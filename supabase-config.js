@@ -13,8 +13,8 @@
 // <script src="supabase-config.js"></script>
 
 const SUPABASE_CONFIG = {
-  url: "https://YOUR_PROJECT_ID.supabase.co",
-  anonKey: "YOUR_ANON_KEY_HERE"
+  url: "https://dxsozkvftpirlttzuujm.supabase.co",
+  anonKey: "sb_publishable_8_O3m5Ltu6lIhxhSjJmAqA_PQW4bptX"
 };
 
 // Initialize Supabase client
