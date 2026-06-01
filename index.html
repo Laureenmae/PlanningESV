@@ -644,76 +644,189 @@
   let currentMonth = new Date().getMonth(); // mois affiché (0-11)
   
   // ============ PERSISTENCE (PARTAGÉE) ============
-  // shared = true : tout le monde qui ouvre le lien partage le MÊME planning
-  const SHARED = true;
-  
-  // Le stockage existe-t-il dans cet environnement ?
-  const HAS_STORAGE = typeof window !== "undefined"
-    && window.storage
-    && typeof window.storage.get === "function"
-    && typeof window.storage.set === "function";
-  
+  const SUPABASE_TABLE = "planning_data";
+  let localFallbackPending = false;
+
   function setStatus(kind, text) {
     const el = document.getElementById("status");
     if (!el) return;
     el.className = "status " + kind;
     el.textContent = text;
   }
-  
-  async function readState() {
-    if (!HAS_STORAGE) throw new Error("no-storage");
-    const r = await window.storage.get(STORAGE_KEY, SHARED); // throw si inexistant
-    if (!r || r.value == null) throw new Error("empty");
-    const parsed = JSON.parse(r.value);
-    if (parsed.plan) state.plan = parsed.plan;
-    if (parsed.team) state.team = parsed.team;
+
+  function setInitialState() {
+    state.plan = JSON.parse(JSON.stringify(INITIAL_DATA));
+    state.team = JSON.parse(JSON.stringify(INITIAL_TEAM));
   }
-  
-  // Premier chargement : seed uniquement si aucune donnée n'existe encore
-  async function firstLoad() {
-    if (!HAS_STORAGE) {
-      state.plan = JSON.parse(JSON.stringify(INITIAL_DATA));
-      state.team = JSON.parse(JSON.stringify(INITIAL_TEAM));
-      setStatus("error", "⚠ Sauvegarde indisponible ici");
-      return;
-    }
+
+  function emptyDataError() {
+    const error = new Error("empty");
+    error.code = "empty";
+    return error;
+  }
+
+  function applyStoredState(value) {
+    const parsed = typeof value === "string" ? JSON.parse(value) : value;
+    if (!parsed || typeof parsed !== "object") throw new Error("invalid-state");
+    if (parsed.plan && typeof parsed.plan === "object") state.plan = parsed.plan;
+    if (Array.isArray(parsed.team)) state.team = parsed.team;
+  }
+
+  function getSupabaseConfig() {
+    return typeof window !== "undefined"
+      && window.supabaseConfig
+      && typeof window.supabaseConfig.init === "function"
+      ? window.supabaseConfig
+      : null;
+  }
+
+  async function getSupabaseClient() {
+    const config = getSupabaseConfig();
+    if (!config) throw new Error("no-supabase-config");
+    const client = await config.init();
+    if (!client || typeof client.from !== "function") throw new Error("invalid-supabase-client");
+    return client;
+  }
+
+  async function readSupabaseState() {
+    const supabase = await getSupabaseClient();
+    const { data, error } = await supabase
+      .from(SUPABASE_TABLE)
+      .select("data")
+      .eq("key", STORAGE_KEY)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!data || data.data == null) throw emptyDataError();
+    applyStoredState(data.data);
+  }
+
+  async function saveSupabaseState() {
+    const supabase = await getSupabaseClient();
+    const { error } = await supabase
+      .from(SUPABASE_TABLE)
+      .upsert({
+        key: STORAGE_KEY,
+        data: { plan: state.plan, team: state.team },
+        updated_at: new Date().toISOString()
+      }, { onConflict: "key" });
+
+    if (error) throw error;
+    return true;
+  }
+
+  function hasLocalStorage() {
     try {
-      await readState();
-      setStatus("ok", "Synchronisé");
+      const testKey = STORAGE_KEY + ":test";
+      window.localStorage.setItem(testKey, "1");
+      window.localStorage.removeItem(testKey);
+      return true;
     } catch (e) {
-      // pas encore de données → on initialise
-      state.plan = JSON.parse(JSON.stringify(INITIAL_DATA));
-      state.team = JSON.parse(JSON.stringify(INITIAL_TEAM));
-      const ok = await save();
-      setStatus(ok ? "ok" : "error", ok ? "Synchronisé" : "⚠ Sauvegarde impossible");
-    }
-  }
-  
-  // Rafraîchissement (ne sème jamais de données par défaut → pas de risque d'écraser)
-  async function refresh() {
-    if (!HAS_STORAGE) return;
-    try { await readState(); render(); setStatus("ok", "Synchronisé"); } catch (e) {}
-  }
-  
-  async function save() {
-    if (!HAS_STORAGE) {
-      setStatus("error", "⚠ Sauvegarde indisponible ici");
       return false;
     }
-    setStatus("saving", "Enregistrement…");
-    // 2 tentatives en cas d'échec réseau ponctuel
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        const res = await window.storage.set(STORAGE_KEY, JSON.stringify(state), SHARED);
-        if (res) { setStatus("ok", "Enregistré ✓"); return true; }
-      } catch (e) {
-        console.error("save fail", e);
-      }
-      await new Promise(r => setTimeout(r, 400));
+  }
+
+  function readLocalState() {
+    if (!hasLocalStorage()) throw new Error("no-local-storage");
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) throw emptyDataError();
+    applyStoredState(raw);
+  }
+
+  function writeLocalState() {
+    if (!hasLocalStorage()) return false;
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        plan: state.plan,
+        team: state.team
+      }));
+      return true;
+    } catch (e) {
+      console.error("localStorage save fail", e);
+      return false;
     }
-    setStatus("error", "⚠ Échec de l'enregistrement");
-    toast("⚠ L'enregistrement a échoué");
-    return false;
+  }
+
+  // Premier chargement : Supabase d'abord, localStorage uniquement en secours.
+  async function firstLoad() {
+    if (getSupabaseConfig()) {
+      try {
+        await readSupabaseState();
+        localFallbackPending = false;
+        setStatus("ok", "Sauvegarde connectée");
+        return;
+      } catch (e) {
+        if (e && e.code === "empty") {
+          setInitialState();
+          try {
+            await saveSupabaseState();
+            localFallbackPending = false;
+            setStatus("ok", "Sauvegarde connectée");
+            return;
+          } catch (saveError) {
+            console.error("supabase seed fail", saveError);
+          }
+        } else {
+          console.error("supabase read fail", e);
+        }
+      }
+    }
+
+    try {
+      readLocalState();
+    } catch (e) {
+      setInitialState();
+      writeLocalState();
+    }
+    localFallbackPending = true;
+    const localAvailable = hasLocalStorage();
+    setStatus("error", localAvailable ? "⚠ Sauvegarde locale" : "⚠ Sauvegarde indisponible");
+  }
+
+  // Rafraîchissement distant : ne sème jamais de données par défaut.
+  async function refresh() {
+    if (!getSupabaseConfig()) return;
+    try {
+      if (localFallbackPending) {
+        const pushed = await save();
+        if (!pushed) return;
+      }
+      await readSupabaseState();
+      localFallbackPending = false;
+      render();
+      setStatus("ok", "Sauvegarde connectée");
+    } catch (e) {
+      console.error("supabase refresh fail", e);
+    }
+  }
+
+  async function save() {
+    if (getSupabaseConfig()) {
+      setStatus("saving", "Enregistrement…");
+      // 2 tentatives en cas d'échec réseau ponctuel
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          await saveSupabaseState();
+          localFallbackPending = false;
+          setStatus("ok", "Sauvegarde connectée");
+          return true;
+        } catch (e) {
+          console.error("supabase save fail", e);
+        }
+        await new Promise(r => setTimeout(r, 400));
+      }
+      const savedLocally = writeLocalState();
+      localFallbackPending = savedLocally;
+      setStatus("error", savedLocally ? "⚠ Sauvegarde locale" : "⚠ Échec de l'enregistrement");
+      toast(savedLocally ? "⚠ Supabase indisponible, sauvegarde locale" : "⚠ L'enregistrement a échoué");
+      return false;
+    }
+
+    const savedLocally = writeLocalState();
+    localFallbackPending = savedLocally;
+    setStatus("error", savedLocally ? "⚠ Sauvegarde locale" : "⚠ Sauvegarde indisponible");
+    if (!savedLocally) toast("⚠ L'enregistrement a échoué");
+    return savedLocally;
   }
   
   function getPerson(name) {
